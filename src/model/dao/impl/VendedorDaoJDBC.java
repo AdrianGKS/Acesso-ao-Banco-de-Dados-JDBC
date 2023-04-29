@@ -10,7 +10,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class VendedorDaoJDBC implements VendedorDao {
 
@@ -49,17 +52,8 @@ public class VendedorDaoJDBC implements VendedorDao {
             resultSet = preparedStatement.executeQuery();
 
             if (resultSet.next()) {
-                Departamento departamento = new Departamento();
-                departamento.setId(resultSet.getInt("DepartmentId"));
-                departamento.setNome(resultSet.getString("DepName"));
-
-                Vendedor vendedor = new Vendedor();
-                vendedor.setId(resultSet.getInt("Id"));
-                vendedor.setNome(resultSet.getString("Name"));
-                vendedor.setEmail(resultSet.getString("Email"));
-                vendedor.setSalarioBase(resultSet.getDouble("BaseSalary"));
-                vendedor.setDataNascimento(resultSet.getDate("BirthDate"));
-                vendedor.setDepartamento(departamento);
+                Departamento departamento = instantiateDepartamento(resultSet);
+                Vendedor vendedor = instantiateVendedor(resultSet, departamento);
 
                 return vendedor;
             }
@@ -72,8 +66,98 @@ public class VendedorDaoJDBC implements VendedorDao {
         }
     }
 
+    private Vendedor instantiateVendedor(ResultSet resultSet, Departamento departamento) throws SQLException{
+        Vendedor vendedor =  new Vendedor();
+        vendedor.setId(resultSet.getInt("Id"));
+        vendedor.setNome(resultSet.getString("Name"));
+        vendedor.setEmail(resultSet.getString("Email"));
+        vendedor.setSalarioBase(resultSet.getDouble("BaseSalary"));
+        vendedor.setDataNascimento(resultSet.getDate("BirthDate"));
+        vendedor.setDepartamento(departamento);
+        return vendedor;
+    }
+
+    private Departamento instantiateDepartamento(ResultSet resultSet) throws SQLException {
+        Departamento departamento = new Departamento();
+        departamento.setId(resultSet.getInt("DepartmentId"));
+        departamento.setNome(resultSet.getString("DepName"));
+        return departamento;
+    }
+
     @Override
     public List<Vendedor> findAll() {
-        return null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            preparedStatement = connection.prepareStatement(
+                    "SELECT seller.*,department.Name as DepName \n" +
+                            "FROM seller INNER JOIN department \n" +
+                            "ON seller.DepartmentId = department.Id\n" +
+                            "ORDER BY Name");
+
+            resultSet = preparedStatement.executeQuery();
+
+            List<Vendedor> list = new ArrayList<>();
+            Map<Integer, Departamento> map = new HashMap<>();
+
+            while (resultSet.next()) {
+                Departamento dep = map.get(resultSet.getInt("DepartmentId"));
+
+                if (dep == null) {
+                    dep = instantiateDepartamento(resultSet);
+                    map.put(resultSet.getInt("DepartmentId"), dep);
+                }
+
+                Vendedor vendedor = instantiateVendedor(resultSet, dep);
+                list.add(vendedor);
+            }
+            return list;
+
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeStatement(preparedStatement);
+            DB.closeResultSet(resultSet);
+        }
+    }
+
+    @Override
+    public List<Vendedor> findByDepartamento(Departamento departamento) {
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            preparedStatement = connection.prepareStatement(
+                    "SELECT seller.*,department.Name as DepName \n" +
+                    "FROM seller INNER JOIN department \n" +
+                    "ON seller.DepartmentId = department.Id\n" +
+                    "WHERE DepartmentId = ?\n" +
+                    "ORDER BY Name");
+
+            preparedStatement.setInt(1, departamento.getId());
+
+            resultSet = preparedStatement.executeQuery();
+
+            List<Vendedor> list = new ArrayList<>();
+            Map<Integer, Departamento> map = new HashMap<>();
+
+            while (resultSet.next()) {
+                Departamento dep = map.get(resultSet.getInt("DepartmentId"));
+
+                if (dep == null) {
+                    dep = instantiateDepartamento(resultSet);
+                    map.put(resultSet.getInt("DepartmentId"), dep);
+                }
+
+                Vendedor vendedor = instantiateVendedor(resultSet, dep);
+                list.add(vendedor);
+            }
+            return list;
+
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeStatement(preparedStatement);
+            DB.closeResultSet(resultSet);
+        }
     }
 }

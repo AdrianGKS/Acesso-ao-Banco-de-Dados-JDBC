@@ -37,5 +37,12 @@ public class Application {
         Vendedor novoVendedor = new Vendedor(null, "Greg", "greg@gmail.com", new Date(), 4000.0, departamento);
         vendedorDao.insert(novoVendedor);
         System.out.println("Inserido! Novo id = " + novoVendedor.getId());
+
+        System.out.println("\n===== TESTE 5: vendedor update =======");
+        vendedor = vendedorDao.findById(1);
+        vendedor.setNome("Marta Castilhos");
+        vendedorDao.update(vendedor);
+        System.out.println("Atualização completa!");
+
     }
 }

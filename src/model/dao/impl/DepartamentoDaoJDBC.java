@@ -6,7 +6,9 @@ import model.dao.DepartamentoDao;
 import model.entities.Departamento;
 import model.entities.Vendedor;
 
+import javax.xml.transform.Result;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DepartamentoDaoJDBC implements DepartamentoDao {
@@ -73,7 +75,23 @@ public class DepartamentoDaoJDBC implements DepartamentoDao {
 
     @Override
     public void deleteById(Integer id) {
+        PreparedStatement preparedStatement = null;
 
+        try {
+            preparedStatement = connection.prepareStatement("DELETE FROM department WHERE Id = ?");
+
+            preparedStatement.setInt(1, id);
+
+            int rowsAffected = preparedStatement.executeUpdate();
+
+            if (rowsAffected == 0) {
+                throw new DbException("Id inexistente.");
+            }
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeStatement(preparedStatement);
+        }
     }
 
     @Override
@@ -110,6 +128,28 @@ public class DepartamentoDaoJDBC implements DepartamentoDao {
 
     @Override
     public List<Departamento> findAll() {
-        return null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            preparedStatement = connection.prepareStatement(
+                    "SELECT * FROM department ORDER BY Name");
+            resultSet = preparedStatement.executeQuery();
+
+            List<Departamento> list = new ArrayList<>();
+
+            while (resultSet.next()) {
+                Departamento obj = new Departamento();
+                obj.setId(resultSet.getInt("Id"));
+                obj.setNome(resultSet.getString("Name"));
+                list.add(obj);
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new DbException(e.getMessage());
+        } finally {
+            DB.closeStatement(preparedStatement);
+            DB.closeResultSet(resultSet);
+        }
     }
 }
